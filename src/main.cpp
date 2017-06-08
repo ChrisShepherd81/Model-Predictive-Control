@@ -8,6 +8,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
+#include "Path.h"
 
 // for convenience
 using json = nlohmann::json;
@@ -90,7 +91,14 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
+          double psi_unity = j[1]["psi_unity"];
           double v = j[1]["speed"];
+
+          Path path(ptsx, ptsy);
+          path.translation(-px, -py);
+          path.rotation(-psi);
+
+
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -98,8 +106,8 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+          double steer_value = 0;
+          double throttle_value = 0;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -118,14 +126,10 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
+          msgJson["next_x"] = path.getXVector();
+          msgJson["next_y"] = path.getYVector();
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
