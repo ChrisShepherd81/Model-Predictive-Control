@@ -26,8 +26,8 @@ using CppAD::AD;
 const double Lf = 2.67;
 
 // TODO: Set the timestep length and duration
-size_t N = 20;
-double dt = 0.3;
+size_t N = 15;
+double dt = 0.2;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
@@ -52,32 +52,13 @@ class FG_eval {
   FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
-  void operator()(ADvector& fg, const ADvector& vars) {
+  void operator()(ADvector& fg, const ADvector& vars)
+  {
     // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
     // NOTE: You'll probably go back and forth between this function and
     // the Solver function below.
     // The cost is stored is the first element of `fg`.
-        // Any additions to the cost should be added to `fg[0]`.
-        fg[0] = 0;
-
-        // The part of the cost based on the reference state.
-        for (int t = 0; t < N; t++) {
-          fg[0] += CppAD::pow(vars[cte_start + t], 2);
-          fg[0] += CppAD::pow(vars[epsi_start + t], 2);
-          fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
-        }
-
-        // Minimize the use of actuators.
-        for (int t = 0; t < N - 1; t++) {
-          fg[0] += CppAD::pow(vars[delta_start + t], 2);
-          fg[0] += CppAD::pow(vars[a_start + t], 2);
-        }
-
-        // Minimize the value gap between sequential actuations.
-        for (int t = 0; t < N - 2; t++) {
-          fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-          fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
-        }
+    fg[0] = this->calculateCost(vars);
 
         //
         // Setup Constraints
@@ -118,8 +99,8 @@ class FG_eval {
           AD<double> delta0 = vars[delta_start + t - 1];
           AD<double> a0 = vars[a_start + t - 1];
 
-          AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] *(x0*x0);
-          AD<double> psides0 = CppAD::atan(coeffs[1]+(2*coeffs[2] * x0));
+          AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * (x0*x0) + coeffs[3] * (x0*x0*x0);
+          AD<double> psides0 = CppAD::atan(coeffs[1]+(2*coeffs[2] * x0)+(3*coeffs[3] * (x0*x0)));
 
           // Here's `x` to get you started.
           // The idea here is to constraint this value to be 0.
@@ -138,6 +119,36 @@ class FG_eval {
           fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
           fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * (delta0 / Lf) * dt);
         }
+  }
+
+  AD<double> calculateCost(const ADvector& vars)
+  {
+    AD<double> cost = 0;
+    AD<double> cte_punishment = 3.0;
+    AD<double> epsi_punishment = 2.0;
+    AD<double> delta_punishment = 10.0;
+    AD<double> delta_diff_punishment = 200.0;
+
+    // The part of the cost based on the reference state.
+    for (int t = 0; t < N; t++) {
+      cost += cte_punishment*CppAD::pow(vars[cte_start + t], 2); //Cross track errors
+      cost += epsi_punishment*CppAD::pow(vars[epsi_start + t], 2); //error psi
+      cost += CppAD::pow(vars[v_start + t] - ref_v, 2); // speed
+    }
+
+    // Minimize the use of actuators.
+    for (int t = 0; t < N - 1; t++) {
+      cost += delta_punishment*CppAD::pow(vars[delta_start + t], 2);
+      cost += CppAD::pow(vars[a_start + t], 2);
+    }
+
+    // Minimize the value gap between sequential actuations.
+    for (int t = 0; t < N - 2; t++) {
+      cost += delta_diff_punishment*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      cost += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+    }
+
+    return cost;
   }
 };
 
