@@ -9,6 +9,7 @@
 #include "MPC.h"
 #include "json.hpp"
 #include "Path.h"
+#include "Polynomial.h"
 
 // for convenience
 using json = nlohmann::json;
@@ -31,39 +32,6 @@ string hasData(string s) {
     return s.substr(b1, b2 - b1 + 2);
   }
   return "";
-}
-
-// Evaluate a polynomial.
-double polyeval(Eigen::VectorXd coeffs, double x) {
-  double result = 0.0;
-  for (int i = 0; i < coeffs.size(); i++) {
-    result += coeffs[i] * pow(x, i);
-  }
-  return result;
-}
-
-// Fit a polynomial.
-// Adapted from
-// https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
-                        int order) {
-  assert(xvals.size() == yvals.size());
-  assert(order >= 1 && order <= xvals.size() - 1);
-  Eigen::MatrixXd A(xvals.size(), order + 1);
-
-  for (int i = 0; i < xvals.size(); i++) {
-    A(i, 0) = 1.0;
-  }
-
-  for (int j = 0; j < xvals.size(); j++) {
-    for (int i = 0; i < order; i++) {
-      A(j, i + 1) = A(j, i) * xvals(j);
-    }
-  }
-
-  auto Q = A.householderQr();
-  auto result = Q.solve(yvals);
-  return result;
 }
 
 int main() {
@@ -92,48 +60,73 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double psi_unity = j[1]["psi_unity"];
-          double v = j[1]["speed"];
+          double v = ((double)j[1]["speed"])* 0.44704;
 
-          Path path(ptsx, ptsy);
-          path.translation(-px, -py);
-          path.rotation(-psi);
+          //Create path in car coordinate system
+          Path car_path(ptsx, ptsy);
+          car_path.translation(-px, -py);
+          car_path.rotation(-psi);
 
+          //Polynomial of path in car coordinates
+          Polynomial polynomial_car_path(car_path.getXVector(), car_path.getYVector(), 2);
+
+
+          // The cross track error is calculated by evaluating the polynomial at x=0.
+          double cte = polynomial_car_path.polyeval(0);
+
+          //Calculate psi error.
+          double slope_at_0 = polynomial_car_path.getCoefficients()[1];
+          double atan = std::atan(slope_at_0);
+          double epsi = -atan ;
+
+          std::cout << "CTE: " << cte << " ePsi: " << epsi << " atan: " << atan << " slope: " << slope_at_0 << std::endl;
 
 
           /*
-          * TODO: Calculate steering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
+            * TODO: Calculate steering angle and throttle using MPC.
+            *
+            * Both are in between [-1, 1].
+            *
           */
-          double steer_value = 0;
-          double throttle_value = 0;
+          Eigen::VectorXd state(6);
+          state << 0, 0, 0, v, cte, epsi;
+          auto vars = mpc.Solve(state, polynomial_car_path.getCoefficients());
+
+          state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
+          std::cout << "x = " << vars[0] << std::endl;
+          std::cout << "y = " << vars[1] << std::endl;
+          std::cout << "psi = " << vars[2] << std::endl;
+          std::cout << "v = " << vars[3] << std::endl;
+          std::cout << "cte = " << vars[4] << std::endl;
+          std::cout << "epsi = " << vars[5] << std::endl;
+          std::cout << "delta = " << vars[6] << std::endl;
+          std::cout << "a = " << vars[7] << std::endl;
+
+          double steer_value = vars[6];
+          double throttle_value = vars[7];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+          msgJson["steering_angle"] = -steer_value/deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
-          vector<double> mpc_x_vals;
-          vector<double> mpc_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
-          msgJson["mpc_x"] = mpc_x_vals;
-          msgJson["mpc_y"] = mpc_y_vals;
+          msgJson["mpc_x"] = mpc.getPathX();
+          msgJson["mpc_y"] = mpc.getPathY();
 
           //Display the waypoints/reference line
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          msgJson["next_x"] = path.getXVector();
-          msgJson["next_y"] = path.getYVector();
+
+          msgJson["next_x"] = car_path.getXStdVector();
+          msgJson["next_y"] = car_path.getYStdVector();
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
@@ -143,8 +136,9 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          //this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          //exit(1);
         }
       } else {
         // Manual driving

@@ -22,13 +22,17 @@ class Path
   Eigen::MatrixXd _pathPoints;
 
  public:
-  Path(std::vector<double> &x, std::vector<double> &y);
+  Path(std::vector<double> x, std::vector<double> y);
 
   void translation(double x, double y);
   void rotation(double angle);
 
-  std::vector<double> getXVector() const;
-  std::vector<double> getYVector() const;
+  std::vector<double> getXStdVector() const;
+  std::vector<double> getYStdVector() const;
+
+  Eigen::VectorXd getXVector() const;
+  Eigen::VectorXd getYVector() const;
+
   virtual ~Path();
 };
 
