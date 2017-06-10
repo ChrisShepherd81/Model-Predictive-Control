@@ -20,6 +20,7 @@ double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
 #define MPH_TO_MS 0.44704
+//#define USE_GLOBAL_MAP_FOR_MPC
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -71,6 +72,27 @@ int main() {
           double psi_unity = j[1]["psi_unity"];
           double v = ((double)j[1]["speed"])*MPH_TO_MS;
 
+#ifdef USE_GLOBAL_MAP_FOR_MPC //TODO: Doesn't work because of orientation? x -> -x
+          //Create path in global coordinate system
+          Path gloabl_path(ptsx, ptsy);
+
+          //Polynomial of path in global coordinates
+          Polynomial polynomial_global_path(gloabl_path.getXVector(), gloabl_path.getYVector(), 3);
+
+          // The cross track error is calculated by evaluating the polynomial at x, f(x) and y subtracted.
+          double cte = polynomial_global_path.polyeval(px) - py;
+
+          //Calculate psi error.
+          auto coeffs = polynomial_global_path.getCoefficients();
+          double slope_at_px = coeffs[1] + (2*coeffs[2]*px) + (3*coeffs[3]*px*px);
+          double atan = std::atan(slope_at_px);
+          double epsi = -atan ;
+
+          std::cout << "CTE: " << cte << " ePsi: " << epsi << " atan: " << atan << " slope: " << slope_at_px << std::endl;
+
+          Eigen::VectorXd state(6);
+          state << px, py, psi, v, cte, epsi;
+#else
           //Create path in car coordinate system
           Path car_path(ptsx, ptsy);
           car_path.translation(-px, -py);
@@ -79,31 +101,27 @@ int main() {
           //Polynomial of path in car coordinates
           Polynomial polynomial_car_path(car_path.getXVector(), car_path.getYVector(), 3);
 
-
           // The cross track error is calculated by evaluating the polynomial at x=0.
-          double cte = polynomial_car_path.polyeval(0);
+          double cte = -polynomial_car_path.polyeval(0);
 
           //Calculate psi error.
-          double slope_at_0 = polynomial_car_path.getCoefficients()[1];
+          auto coeffs = polynomial_car_path.getCoefficients();
+          double slope_at_0 = coeffs[1];
           double atan = std::atan(slope_at_0);
           double epsi = -atan ;
 
           //std::cout << "CTE: " << cte << " ePsi: " << epsi << " atan: " << atan << " slope: " << slope_at_0 << std::endl;
 
-
-          /*
-            * TODO: Calculate steering angle and throttle using MPC.
-            *
-            * Both are in between [-1, 1].
-            *
-          */
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
-          auto vars = mpc.Solve(state, polynomial_car_path.getCoefficients());
+          state << 0, cte, 0, v, cte, epsi;
+#endif
+
+          //Calculate steering angle and throttle using MPC.
+          auto vars = mpc.Solve(state, coeffs);
 
           state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
 
-#if PRINT
+#if 1
           std::cout << "x = " << vars[0] << std::endl;
           std::cout << "y = " << vars[1] << std::endl;
           std::cout << "psi = " << vars[2] << std::endl;
@@ -128,13 +146,29 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
+#ifdef USE_GLOBAL_MAP_FOR_MPC
+          //Create mpc path in car coordinate system
+          Path mpc_path(mpc.getPathX(), mpc.getPathY());
+          mpc_path.translation(-px, -py);
+          mpc_path.rotation(-psi);
+
+          msgJson["mpc_x"] = mpc_path.getXStdVector();
+          msgJson["mpc_y"] = mpc_path.getYStdVector();
+#else
           msgJson["mpc_x"] = mpc.getPathX();
           msgJson["mpc_y"] = mpc.getPathY();
+#endif
 
           //Display the waypoints/reference line
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
+#ifdef USE_GLOBAL_MAP_FOR_MPC
+          //Create path in car coordinate system
+          Path car_path = gloabl_path;
+          car_path.translation(-px, -py);
+          car_path.rotation(-psi);
+#endif
           msgJson["next_x"] = car_path.getXStdVector();
           msgJson["next_y"] = car_path.getYStdVector();
 
