@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include "Points.h"
 #include "Polynomial.h"
+#include "FileWriter.h"
 
 // for convenience
 using json = nlohmann::json;
@@ -20,7 +21,11 @@ double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
 #define MPH_TO_MS 0.44704
-//#define USE_GLOBAL_MAP_FOR_MPC
+#define USE_GLOBAL_MAP_FOR_MPC 0
+#define WRITE_OUTPUT 1
+
+//Number of predictions declared in FG_eval.hpp
+extern size_t N ;
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -44,7 +49,17 @@ int main() {
   MPC mpc;
   std::chrono::steady_clock::time_point last_timeStamp = std::chrono::steady_clock::now();
 
-  h.onMessage([&mpc,&last_timeStamp](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+#if WRITE_OUTPUT
+  //Construct filename with current date time
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  std::stringstream ss;
+  ss << "test_" << std::put_time(&tm, "%d-%m-%Y_%H-%M-%S") << ".csv";
+
+  FileWriter fileWriter(ss.str(), 5, N);
+#endif
+
+  h.onMessage([&mpc,&last_timeStamp, &fileWriter](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -72,7 +87,8 @@ int main() {
           double psi_unity = j[1]["psi_unity"];
           double v = ((double)j[1]["speed"])*MPH_TO_MS;
 
-#ifdef USE_GLOBAL_MAP_FOR_MPC //TODO: Doesn't work because of orientation? x -> -x
+#if USE_GLOBAL_MAP_FOR_MPC
+          //TODO: Doesn't work but why? Because of orientation? x -> -x
           //Create path in global coordinate system
           Points gloabl_path(ptsx, ptsy);
 
@@ -108,7 +124,7 @@ int main() {
           //3rd order polynomial of path
           Polynomial polynomial_car_path(car_path.getXVector(), car_path.getYVector(), 3);
 
-          // The cross track error is calculated by evaluating the polynomial at x=px subtracted by
+          // The cross track error is calculated by evaluating the polynomial at x=rel_x subtracted by rel_y
           double car_rel_x = car_position[0][0];
           double car_rel_y = car_position[0][1];
           double cte = polynomial_car_path.polyeval(car_rel_x) - car_rel_y;
@@ -127,6 +143,12 @@ int main() {
 
           //Calculate steering angle and throttle using MPC.
           auto vars = mpc.Solve(state, coeffs);
+
+#if WRITE_OUTPUT
+          fileWriter.writeData(std::vector<double>(state.data(), state.data() + state.size()),
+                               car_path.getXStdVector(), car_path.getYStdVector(),
+                               mpc.getPathX(), mpc.getPathY() );
+#endif
 
           state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
 
@@ -155,7 +177,7 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
-#ifdef USE_GLOBAL_MAP_FOR_MPC
+#if USE_GLOBAL_MAP_FOR_MPC
           //Create mpc path in car coordinate system
           Points mpc_path(mpc.getPathX(), mpc.getPathY());
           mpc_path.translation(-px, -py);
@@ -164,14 +186,13 @@ int main() {
           msgJson["mpc_x"] = mpc_path.getXStdVector();
           msgJson["mpc_y"] = mpc_path.getYStdVector();
 #else
+
           //Create mpc path in car coordinate system
           Points mpc_path(mpc.getPathX(), mpc.getPathY());
 
           //Transform pathes back in car space
           mpc_path.translation(-car_rel_x, -car_rel_y);
           car_path.translation(-car_rel_x, -car_rel_y);
-
-
 
           msgJson["mpc_x"] = mpc_path.getXStdVector();
           msgJson["mpc_y"] = mpc_path.getYStdVector();
@@ -181,7 +202,7 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
-#ifdef USE_GLOBAL_MAP_FOR_MPC
+#if USE_GLOBAL_MAP_FOR_MPC
           //Create path in car coordinate system
           Points car_path = gloabl_path;
           car_path.translation(-px, -py);
