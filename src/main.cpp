@@ -8,7 +8,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "MPC.h"
 #include "json.hpp"
-#include "Path.h"
+#include "Points.h"
 #include "Polynomial.h"
 
 // for convenience
@@ -74,7 +74,7 @@ int main() {
 
 #ifdef USE_GLOBAL_MAP_FOR_MPC //TODO: Doesn't work because of orientation? x -> -x
           //Create path in global coordinate system
-          Path gloabl_path(ptsx, ptsy);
+          Points gloabl_path(ptsx, ptsy);
 
           //Polynomial of path in global coordinates
           Polynomial polynomial_global_path(gloabl_path.getXVector(), gloabl_path.getYVector(), 3);
@@ -93,27 +93,36 @@ int main() {
           Eigen::VectorXd state(6);
           state << px, py, psi, v, cte, epsi;
 #else
-          //Create path in car coordinate system
-          Path car_path(ptsx, ptsy);
-          car_path.translation(-px, -py);
-          car_path.rotation(-psi);
+          //Create path and car coordinates
+          Points car_path(ptsx, ptsy);
+          Points car_position(px,py);
 
-          //Polynomial of path in car coordinates
+          //Translate car and path coordinates to 1st point in path
+          car_path.translation(-ptsx[0], -ptsy[0]);
+          car_position.translation(-ptsx[0], -ptsy[0]);
+
+          //Rotate points by -psi
+          car_path.rotation(-psi);
+          car_position.rotation(-psi);
+
+          //3rd order polynomial of path
           Polynomial polynomial_car_path(car_path.getXVector(), car_path.getYVector(), 3);
 
-          // The cross track error is calculated by evaluating the polynomial at x=0.
-          double cte = -polynomial_car_path.polyeval(0);
+          // The cross track error is calculated by evaluating the polynomial at x=px subtracted by
+          double car_rel_x = car_position[0][0];
+          double car_rel_y = car_position[0][1];
+          double cte = polynomial_car_path.polyeval(car_rel_x) - car_rel_y;
 
           //Calculate psi error.
           auto coeffs = polynomial_car_path.getCoefficients();
-          double slope_at_0 = coeffs[1];
-          double atan = std::atan(slope_at_0);
-          double epsi = -atan ;
+          double slope_at_rel_x = coeffs[1]+ (2*coeffs[2]* car_rel_x) + (3*coeffs[3]* std::pow(car_rel_x,2.0));
+          double epsi = -std::atan(slope_at_rel_x);
 
           //std::cout << "CTE: " << cte << " ePsi: " << epsi << " atan: " << atan << " slope: " << slope_at_0 << std::endl;
 
           Eigen::VectorXd state(6);
-          state << 0, cte, 0, v, cte, epsi;
+          state << car_rel_x, car_rel_y, 0, v, cte, epsi;
+          std::cout << "test\n";
 #endif
 
           //Calculate steering angle and throttle using MPC.
@@ -138,7 +147,7 @@ int main() {
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          //TODO: why -1 is needed here?
+
           msgJson["steering_angle"] = -steer_value/deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
@@ -148,15 +157,24 @@ int main() {
 
 #ifdef USE_GLOBAL_MAP_FOR_MPC
           //Create mpc path in car coordinate system
-          Path mpc_path(mpc.getPathX(), mpc.getPathY());
+          Points mpc_path(mpc.getPathX(), mpc.getPathY());
           mpc_path.translation(-px, -py);
           mpc_path.rotation(-psi);
 
           msgJson["mpc_x"] = mpc_path.getXStdVector();
           msgJson["mpc_y"] = mpc_path.getYStdVector();
 #else
-          msgJson["mpc_x"] = mpc.getPathX();
-          msgJson["mpc_y"] = mpc.getPathY();
+          //Create mpc path in car coordinate system
+          Points mpc_path(mpc.getPathX(), mpc.getPathY());
+
+          //Transform pathes back in car space
+          mpc_path.translation(-car_rel_x, -car_rel_y);
+          car_path.translation(-car_rel_x, -car_rel_y);
+
+
+
+          msgJson["mpc_x"] = mpc_path.getXStdVector();
+          msgJson["mpc_y"] = mpc_path.getYStdVector();
 #endif
 
           //Display the waypoints/reference line
@@ -165,7 +183,7 @@ int main() {
 
 #ifdef USE_GLOBAL_MAP_FOR_MPC
           //Create path in car coordinate system
-          Path car_path = gloabl_path;
+          Points car_path = gloabl_path;
           car_path.translation(-px, -py);
           car_path.rotation(-psi);
 #endif

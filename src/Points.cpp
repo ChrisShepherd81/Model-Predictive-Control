@@ -5,60 +5,65 @@
  *      Author: christian@inf-schaefer.de
  */
 
-#include "Path.h"
+#include "Points.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Path::Path(std::vector<double> x, std::vector<double> y)
+Points::Points(std::vector<double> x, std::vector<double> y)
 {
   assert(x.size() == y.size());
 
-  _pathPoints = Eigen::MatrixXd::Zero(x.size(), 2);
+  _points = Eigen::MatrixXd::Zero(x.size(), 2);
 
   for(size_t i=0; i < x.size(); ++i)
   {
-    _pathPoints(i,0) = x[i];
-    _pathPoints(i,1) = y[i];
+    _points(i,0) = x[i];
+    _points(i,1) = y[i];
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Path::~Path() {
+Points::~Points() {
   // TODO Auto-generated destructor stub
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-std::vector<double> Path::getXStdVector() const
+std::vector<double> Points::getXStdVector() const
 {
-  return std::vector<double>(_pathPoints.col(IDX_X).data(), _pathPoints.col(IDX_X).data() + _pathPoints.col(IDX_X).size() );
+  return std::vector<double>(_points.col(IDX_X).data(), _points.col(IDX_X).data() + _points.col(IDX_X).size() );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-std::vector<double> Path::getYStdVector() const
+std::vector<double> Points::getYStdVector() const
 {
-  return std::vector<double>(_pathPoints.col(IDX_Y).data(), _pathPoints.col(IDX_Y).data() + _pathPoints.col(IDX_Y).size() );
+  return std::vector<double>(_points.col(IDX_Y).data(), _points.col(IDX_Y).data() + _points.col(IDX_Y).size() );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Eigen::VectorXd Path::getXVector() const
+Eigen::VectorXd Points::getXVector() const
 {
-  return this->_pathPoints.col(0);
+  return this->_points.col(0);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Eigen::VectorXd Path::getYVector() const
+Eigen::VectorXd Points::getYVector() const
 {
-  return this->_pathPoints.col(1);
+  return this->_points.col(1);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Path::translation(double x, double y)
+void Points::translation(double x, double y)
 {
-  _pathPoints.rowwise() += Eigen::Vector2d(x,y).transpose();
+  _points.rowwise() += Eigen::Vector2d(x,y).transpose();
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Path::rotation(double angle)
+void Points::rotation(double angle)
 {
   Eigen::MatrixXd R = Eigen::MatrixXd::Zero(2,2);
   R <<  std::cos(angle), -std::sin(angle),
         std::sin(angle), std::cos(angle);
 
-  for(size_t i = 0; i < _pathPoints.rows(); ++i)
+  for(size_t i = 0; i < _points.rows(); ++i)
   {
-    _pathPoints.row(i) =  R * _pathPoints.row(i).transpose() ;
+    _points.row(i) =  R * _points.row(i).transpose() ;
   }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+std::vector<double> Points::operator[](size_t index)
+{
+  return std::vector<double>{_points.row(index).data(), _points.row(index).data() + _points.row(index).size()};
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

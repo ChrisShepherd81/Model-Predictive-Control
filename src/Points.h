@@ -5,24 +5,26 @@
  *      Author: christian@inf-schaefer.de
  */
 
-#ifndef SRC_PATH_H_
-#define SRC_PATH_H_
+#ifndef SRC_POINTS_H_
+#define SRC_POINTS_H_
 
 #include <vector>
 #include <iostream>
+#include <tuple>
 
 #include "Eigen-3.3/Eigen/Dense"
 
 
-class Path
+class Points
 {
   const size_t IDX_X = 0;
   const size_t IDX_Y = 1;
 
-  Eigen::MatrixXd _pathPoints;
+  Eigen::MatrixXd _points;
 
  public:
-  Path(std::vector<double> x, std::vector<double> y);
+  Points(std::vector<double> x, std::vector<double> y);
+  Points(double x, double y) : Points(std::vector<double>{x}, std::vector<double>{y}) {}
 
   void translation(double x, double y);
   void rotation(double angle);
@@ -33,7 +35,9 @@ class Path
   Eigen::VectorXd getXVector() const;
   Eigen::VectorXd getYVector() const;
 
-  virtual ~Path();
+  std::vector<double> operator[](size_t index);
+
+  virtual ~Points();
 };
 
-#endif /* SRC_PATH_H_ */
+#endif /* SRC_POINTS_H_ */
