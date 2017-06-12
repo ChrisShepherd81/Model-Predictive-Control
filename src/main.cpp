@@ -56,7 +56,7 @@ int main() {
   std::stringstream ss;
   ss << "test_" << std::put_time(&tm, "%d-%m-%Y_%H-%M-%S") << ".csv";
 
-  FileWriter fileWriter(ss.str(), 5, N);
+  FileWriter fileWriter(ss.str(), 6, N);
 #endif
 
   h.onMessage([&mpc,&last_timeStamp, &fileWriter](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,

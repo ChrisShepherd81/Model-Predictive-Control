@@ -15,7 +15,7 @@ FileWriter::FileWriter(std::string filename, size_t noOfWaypoints, size_t noOfPr
 void FileWriter::writeHeader(size_t noOfWaypoints, size_t noOfPredictions)
 {
   std::stringstream ss;
-  ss << "x,y,psi,v,cte,epsi,delta,a,";
+  ss << "x,y,psi,v,cte,epsi,";
   auto fillHeader = [&](std::string prefix, size_t n) -> void
   {
     for(size_t i=0; i < n; ++i)

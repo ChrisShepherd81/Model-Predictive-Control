@@ -27,7 +27,12 @@ const double Lf = 2.67;
 
 // TODO: Set the timestep length and duration
 size_t N = 15;
-double dt = 0.2;
+double dt = 0.20;
+
+AD<double> cte_punishment = 10.0;
+AD<double> epsi_punishment = 1.0;
+AD<double> delta_punishment = 5.0;
+AD<double> delta_diff_punishment = 350.0;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
@@ -124,10 +129,6 @@ class FG_eval {
   AD<double> calculateCost(const ADvector& vars)
   {
     AD<double> cost = 0;
-    AD<double> cte_punishment = 5.0;
-    AD<double> epsi_punishment = 2.0;
-    AD<double> delta_punishment = 3.0;
-    AD<double> delta_diff_punishment = 200.0;
 
     // The part of the cost based on the reference state.
     for (int t = 0; t < N; t++) {
