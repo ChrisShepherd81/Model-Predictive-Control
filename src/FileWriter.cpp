@@ -7,12 +7,12 @@
 
 #include "FileWriter.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-FileWriter::FileWriter(std::string filename, size_t noOfWaypoints, size_t noOfPredictions) {
+FileWriter::FileWriter(std::string filename, size_t polynomialGrade, size_t noOfWaypoints, size_t noOfPredictions) {
   this->filename_ = filename;
-  this->writeHeader(noOfWaypoints, noOfPredictions);
+  this->writeHeader(polynomialGrade, noOfWaypoints, noOfPredictions);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void FileWriter::writeHeader(size_t noOfWaypoints, size_t noOfPredictions)
+void FileWriter::writeHeader(size_t polynomialGrade, size_t noOfWaypoints, size_t noOfPredictions)
 {
   std::stringstream ss;
   ss << "x,y,psi,v,cte,epsi,";
@@ -21,17 +21,18 @@ void FileWriter::writeHeader(size_t noOfWaypoints, size_t noOfPredictions)
     for(size_t i=0; i < n; ++i)
       ss << prefix << "_" << i << ",";
   };
+  fillHeader("coeff_", polynomialGrade+1);
   fillHeader("w_x", noOfWaypoints);
   fillHeader("w_y", noOfWaypoints);
-  fillHeader("p_x", noOfPredictions);
-  fillHeader("p_y", noOfPredictions);
+  fillHeader("p_x", noOfPredictions-1);
+  fillHeader("p_y", noOfPredictions-1);
 
   this->writeLine(ss.str());
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void FileWriter::writeData(const std::vector<double> &state, const std::vector<double> &wayPointsX,
-                           const std::vector<double> &wayPointsY, const std::vector<double> &predictionsX,
-                           const std::vector<double> &predictionsY)
+void FileWriter::writeData(const std::vector<double> &state, const std::vector<double> &coeffs,
+                           const std::vector<double> &wayPointsX, const std::vector<double> &wayPointsY,
+                           const std::vector<double> &predictionsX,const std::vector<double> &predictionsY)
 {
   std::stringstream ss;
 
@@ -42,6 +43,7 @@ void FileWriter::writeData(const std::vector<double> &state, const std::vector<d
   };
 
   fillStringStream(state);
+  fillStringStream(coeffs);
   fillStringStream(wayPointsX);
   fillStringStream(wayPointsY);
   fillStringStream(predictionsX);
