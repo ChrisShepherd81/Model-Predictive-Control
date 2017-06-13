@@ -11,6 +11,7 @@ class MPC {
   std::vector<double> _pathY;
 
  public:
+
   MPC();
 
   virtual ~MPC();
