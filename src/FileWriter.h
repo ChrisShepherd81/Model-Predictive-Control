@@ -2,7 +2,6 @@
  * FileWriter.h
  *
  *  Created on: 24.05.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #ifndef SRC_FILEWRITER_H_

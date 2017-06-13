@@ -2,7 +2,6 @@
  * Path.cpp
  *
  *  Created on: 08.06.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #include "Points.h"
@@ -21,9 +20,7 @@ Points::Points(std::vector<double> x, std::vector<double> y)
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Points::~Points() {
-  // TODO Auto-generated destructor stub
-}
+Points::~Points() {}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 std::vector<double> Points::getXStdVector() const
 {

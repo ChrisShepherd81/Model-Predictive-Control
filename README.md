@@ -1,7 +1,28 @@
-# CarND-Controls-MPC
-Self-Driving Car Engineer Nanodegree Program
+## Model-Predcitve-Control
+5th project of the 2nd term in Udacities Self Driving Car Course
 
----
+# Problem Description
+
+The task is to keep a car safely on a given track in a simulator, controlling the steering angle - within the range [-25°, 25°] - and the throttle - within [-1, 1] - with [MPC algorithm](https://en.wikipedia.org/wiki/Model_predictive_control). 
+
+The state measurements supported by the simulator are: 
+- Global car position "px" and "py" in meters.
+- A list of 6 way point coordinates nearby the car (one behind and five in front of the current car position).
+- The orientation of the car within the global map "psi" in rad.
+- The current speed "v" in mph.
+
+Furthermore a latency of 100 ms has been added to mimic real driving conditions where the car does actuate the commands instantly.
+
+# Limitations
+
+# Considerations
+
+
+# Overview
+
+# Parameter search
+
+# Results
 
 ## Dependencies
 
@@ -49,14 +70,6 @@ Self-Driving Car Engineer Nanodegree Program
 2. Make a build directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./mpc`.
-
-## Tips
-
-1. It's recommended to test the MPC on basic examples to see if your implementation behaves as desired. One possible example
-is the vehicle starting offset of a straight line (reference). If the MPC implementation is correct, after some number of timesteps
-(not too many) it should find and track the reference line.
-2. The `lake_track_waypoints.csv` file has the waypoints of the lake track. You could use this to fit polynomials and points and see of how well your model tracks curve. NOTE: This file might be not completely in sync with the simulator so your solution should NOT depend on it.
-3. For visualization this C++ [matplotlib wrapper](https://github.com/lava/matplotlib-cpp) could be helpful.
 
 ## Editor Settings
 

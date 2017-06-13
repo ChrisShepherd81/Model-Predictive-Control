@@ -48,7 +48,7 @@ for (i in 1:samples)
 	png(curr_file, width = img_w, height = img_h)
 
 	plot(w_x[i,], w_y[i,], col="blue", lwd=1, xlim=c(-10,100) , ylim=c(-10,100))
-	curve(coeff[i,1]+coeff[i,2]*x+coeff[i,3]*x^2+coeff[i,4]*x^3, from=0, to=80, lty=2)
+	curve(coeff[i,1]+coeff[i,2]*x+coeff[i,3]*x^2+coeff[i,4]*x^3, from=0, to=80, lty=2, xlim=c(-10,100), ylim=c(-10,100), ylab='y')
 	points(pos_x[i],pos_y[i], type="p")
 
 	points(p_x[i,], p_y[i,], col="red", lwd=1)

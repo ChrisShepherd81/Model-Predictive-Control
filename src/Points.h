@@ -2,7 +2,6 @@
  * Path.h
  *
  *  Created on: 08.06.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #ifndef SRC_POINTS_H_

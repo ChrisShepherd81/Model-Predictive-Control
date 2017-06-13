@@ -2,7 +2,6 @@
  * FileWriter.cpp
  *
  *  Created on: 24.05.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #include "FileWriter.h"

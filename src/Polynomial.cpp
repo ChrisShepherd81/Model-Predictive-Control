@@ -2,7 +2,6 @@
  * Polynomial.cpp
  *
  *  Created on: 09.06.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #include "Polynomial.h"

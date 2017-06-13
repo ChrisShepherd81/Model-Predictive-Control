@@ -2,7 +2,6 @@
  * Polynomial.h
  *
  *  Created on: 09.06.2017
- *      Author: christian@inf-schaefer.de
  */
 
 #ifndef SRC_POLYNOMIAL_H_
