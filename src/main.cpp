@@ -56,7 +56,7 @@ int main() {
   std::stringstream ss;
   ss << "test_" << std::put_time(&tm, "%d-%m-%Y_%H-%M-%S") << ".csv";
 
-  FileWriter fileWriter(ss.str(), 6, N);
+  FileWriter fileWriter(ss.str(), 3, 6, N);
 #endif
 
   h.onMessage([&mpc,&last_timeStamp, &fileWriter](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -132,9 +132,8 @@ int main() {
           //Calculate psi error.
           auto coeffs = polynomial_car_path.getCoefficients();
           double slope_at_rel_x = coeffs[1]+ (2*coeffs[2]* car_rel_x) + (3*coeffs[3]* std::pow(car_rel_x,2.0));
-          double epsi = -std::atan(slope_at_rel_x);
-
-          //std::cout << "CTE: " << cte << " ePsi: " << epsi << " atan: " << atan << " slope: " << slope_at_0 << std::endl;
+          double angle = std::atan(slope_at_rel_x);
+          double epsi = -angle;
 
           Eigen::VectorXd state(6);
           state << car_rel_x, car_rel_y, 0, v, cte, epsi;
@@ -146,6 +145,7 @@ int main() {
 
 #if WRITE_OUTPUT
           fileWriter.writeData(std::vector<double>(state.data(), state.data() + state.size()),
+                               std::vector<double>(coeffs.data(), coeffs.data() + coeffs.size()),
                                car_path.getXStdVector(), car_path.getYStdVector(),
                                mpc.getPathX(), mpc.getPathY() );
 #endif
@@ -194,6 +194,7 @@ int main() {
           mpc_path.translation(-car_rel_x, -car_rel_y);
           car_path.translation(-car_rel_x, -car_rel_y);
 
+          std::cout << "Size: " << mpc_path.getXStdVector().size() << std::endl;
           msgJson["mpc_x"] = mpc_path.getXStdVector();
           msgJson["mpc_y"] = mpc_path.getYStdVector();
 #endif
