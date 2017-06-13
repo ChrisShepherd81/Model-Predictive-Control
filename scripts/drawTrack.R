@@ -1,43 +1,70 @@
 #!/usr/local/bin/Rscript
 
+args = commandArgs(trailingOnly=TRUE)
+
+if (length(args)==0) {
+  stop("Usage: drawGraphs.R csv-file", call.=FALSE)
+} 
+
 #Read data
-csv <- read.csv(file="../lake_track_waypoints.csv", head=TRUE, sep=",")
+csv <- read.csv(file=args[1], head=TRUE, sep=",")
+i = as.numeric(as.character(args[2]))
+
+path = paste("test_", format(Sys.time(), "%d_%b_%Y-%H-%M-%S"), sep="")
+dir.create(file.path(".", path))
+samples = length(csv[,1])
+
+lastStateAt = 6
+polynomialGrade = 4
+waypoints = 6
+beginWaypoints = lastStateAt+polynomialGrade+1
+beginPredictions = beginWaypoints+2*waypoints
+predictions = 11
 
 pos_x = as.numeric(as.character(csv[,1]))
 pos_y = as.numeric(as.character(csv[,2]))
+psi = as.numeric(as.character(csv[,3]))
+v = as.numeric(as.character(csv[,4]))
+cte = as.numeric(as.character(csv[,5]))
+epsi = as.numeric(as.character(csv[,6]))
+#delta = as.numeric(as.character(csv[,7]))
+#a = as.numeric(as.character(csv[,8]))
+
+coeff = matrix(unlist(csv[,(lastStateAt+1):(lastStateAt+polynomialGrade)]), ncol = polynomialGrade)
+w_x = matrix(unlist(csv[,(beginWaypoints):(beginWaypoints+waypoints-1)]), ncol = waypoints)
+w_y = matrix(unlist(csv[,(beginWaypoints+waypoints):(beginWaypoints+(2*waypoints)-1)]), ncol = waypoints) 
+p_x = matrix(unlist(csv[,beginPredictions:(beginPredictions+predictions-1)]), ncol = predictions)
+p_y = matrix(unlist(csv[,(beginPredictions+predictions):(beginPredictions+(2*predictions)-1)]), ncol = predictions)
 
 img_h = 960
 img_w = 960
 
-png("track.png", width = img_w, height = img_h)
+file_name = paste("./", path, sep="")
+file_name = paste(file_name, "/track", sep="")
 
-cap_x = c(-32.16173,-43.49173,-61.09,-78.29172,-93.05002,-107.7717)
-cap_y = c(113.361,105.941,92.88499,78.73102,65.34102,50.57938)
-car_x = -40.62
-car_y = 108.73
-psi = 3.733651
-plot(pos_x,pos_y, type="p", pch=4)
-points(cap_x, cap_y, pch=16 )
 
-lines(cap_x, cap_y, col="blue", lwd=2)
+curr_file = paste(file_name, i, sep="")
+curr_file = paste(curr_file, ".png", sep="")
+png(curr_file, width = img_w, height = img_h)
 
-points(car_x, car_y, col="red", lwd=2)
-arrows(car_x, car_y, car_x+(10*cos(psi)), car_y+(10*sin(psi)), length = 0.2, angle = 20, col="red", lwd=2)
+plot(w_x[i,], w_y[i,], col="blue", lwd=1, xlim=c(-10,100) , ylim=c(-10,100))
+curve(coeff[i,1]+coeff[i,2]*x+coeff[i,3]*x^2+coeff[i,4]*x^3, from=0, to=110, lty=2, xlim=c(0,30), ylim=c(-1,5), ylab='y', col="blue")
+points(pos_x[i],pos_y[i], type="p")
+abline(v=pos_x[i], lty=3)
+abline(h=pos_y[i], lty=3)
+m = coeff[i,2]+coeff[i,3]*2*pos_x[i]+coeff[i,4]*3*pos_x[i]^2
+y = coeff[i,1]+coeff[i,2]*pos_x[i]+coeff[i,3]*pos_x[i]^2+coeff[i,4]*pos_x[i]^3
+abline(h=y, lty=3)
+abline(b=m, a=y-(m*pos_x[i]), lty=5, col="brown")
 
-dev.off()
+points(p_x[i,], p_y[i,], col="red", lwd=1)
+lines(p_x[i,], p_y[i,], col="red", lwd=1)
 
-png("track_zoom.png", width = img_w, height = img_h)
+points(w_x[i,], w_y[i,], col="blue", pch=16 )
+lines(w_x[i,], w_y[i,], col="blue", lwd=1)
 
-plot(cap_x,cap_y, type="p", pch=16)
-lines(cap_x, cap_y, col="blue", lwd=2)
-points(car_x, car_y, col="red", lwd=2)
-arrows(car_x, car_y, car_x+(10*cos(psi)), car_y+(10*sin(psi)), length = 0.2, angle = 20, col="red", lwd=2)
-dev.off()
+arrows(pos_x[i],pos_y[i],pos_x[i]+2,pos_y[i], length = 0.2, angle = 20, lwd=2)
 
-rot_x = c(0,13.5424,35.4315,57.6043,77.3232,97.7772)
-rot_y = c(0,-0.165866,0.846859,2.99197,5.86674,9.90012)
+legend(0,5,c("car state and orientation","prediction", "track", "track polynomial", "epsi"),lty=c(1,1,1,2,5), lwd=c(2.5,2.5,2.5,2.5,2.5), col=c("black","red","blue","blue","brown"))
 
-png("track_rot.png", width = img_w, height = img_h)
-plot(rot_x,rot_y, type="p", pch=16, ylim=c(-10,100),xlim=c(-10,100) )
-lines(rot_x, rot_y, col="blue", lwd=2)
 dev.off()

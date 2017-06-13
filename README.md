@@ -18,7 +18,7 @@ Furthermore a latency of 100 ms has been added to mimic real driving conditions 
 ## Considerations
 
 ## Overview
-
+![MPC](./img/mpc_space.png "MPC space diagram")
 ## Parameter search
 
 ## Results
