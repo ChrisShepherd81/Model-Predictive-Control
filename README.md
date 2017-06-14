@@ -3,7 +3,7 @@
 
 ## Problem Description
 
-The task is to keep a car safely on a given track in a simulator, controlling the steering angle - within the range [-25°, 25°] - and the throttle - within [-1, 1] - with [MPC algorithm](https://en.wikipedia.org/wiki/Model_predictive_control). 
+The task is to keep a car safely on a given track in a simulator, controlling the steering angle - within the range [-25°, 25°] - and the throttle - within [-1, 1] - with a [MPC algorithm](https://en.wikipedia.org/wiki/Model_predictive_control). 
 
 The state measurements supported by the simulator are: 
 - Global car position "px" and "py" in meters.
@@ -18,7 +18,23 @@ Furthermore a latency of 100 ms has been added to mimic real driving conditions 
 ## Considerations
 
 ## Overview
+
+For MPC the way points and the vehicle position within the global coordinate system are transformed in the "MPC space".
+In "MPC space" the first way point given by the simulator represent the center of the coordinate system. All translated points are rotated by -psi. The resulted space is shown in the picture below.
 ![MPC](./img/mpc_space.png "MPC space diagram")
+The black circle represent the car positions within the space. The black arrow shows it's orientation which is always 0°.
+The blue line represent the connection within the given way points. The dashed blue line shows the 3rd order polynomial fit for the given way points. The distance between the two dotted horizontal lines is the cross track error. The angle of the brown tangent represents the psi error.
+
+The so transformed and calculated values together with the current speed in m/s are passed as the state to the MPC solve method.
+```
+Eigen::VectorXd state(6);
+state << car_rel_x, car_rel_y, 0, v, cte, epsi;
+//Calculate steering angle and throttle from current state using MPC.
+auto vars = mpc.Solve(state, coeffs);
+```
+
+The calculated throttle and steering angle are used as the control values for the simulated car.
+The red line in the graph above represent the results as prediction path for the next N time stamps. 
 ## Parameter search
 
 ## Results
