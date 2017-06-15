@@ -22,8 +22,8 @@ constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 
 #define MPH_TO_MS 0.44704
-#define USE_GLOBAL_MAP_FOR_MPC 0
-#define WRITE_OUTPUT 1
+
+#define WRITE_OUTPUT 0
 #define PRINT 0
 
 //Number of predictions and dt used in FG_eval.hpp
@@ -49,13 +49,14 @@ int main(int argc, char* argv[]) {
   MPC mpc;
 
   //Set values if parameters given via console parameters
-  if(argc >= 6)
+  if(argc >= 7)
   {
     cte_eval_weigth = std::stod(argv[1]);
     epsi_eval_weigth = std::stod(argv[2]);
     delta_eval_weigth = std::stod(argv[3]);
     delta_diff_eval_weigth = std::stod(argv[4]);
     ref_v = std::stod(argv[5])*MPH_TO_MS;
+    N = std::stoi(argv[6]);
   }
 
   //Initialized on connect
