@@ -162,13 +162,15 @@ int main(int argc, char* argv[]) {
           //Create mpc path in car coordinate system
           Points mpc_path(mpc.getPathX(), mpc.getPathY());
 
-          //Transform pathes back in car space
+          //Transform path back in car space
           mpc_path.translation(-car_rel_x, -car_rel_y);
-          car_path.translation(-car_rel_x, -car_rel_y);
 
           //Display the MPC predicted trajectory
           msgJson["mpc_x"] = mpc_path.getXStdVector();
           msgJson["mpc_y"] = mpc_path.getYStdVector();
+
+          //Transform path back in car space
+          car_path.translation(-car_rel_x, -car_rel_y);
 
           //Display the waypoints/reference line
           msgJson["next_x"] = car_path.getXStdVector();
