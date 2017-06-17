@@ -36,7 +36,7 @@ double ref_v = 40*MPH_TO_MS;
 
 //The weights for cost evaluation
 CppAD::AD<double> cte_eval_weigth = 5.0;
-CppAD::AD<double> delta_eval_weigth = 0.02494*ref_v-0.200000; //Workaround. -> Best delta cost has not been found yet.
+CppAD::AD<double> delta_eval_weigth = 0.02494*ref_v-0.200000; //Workaround. -> Best delta cost calc has not been found yet.
 CppAD::AD<double> delta_diff_eval_weigth = 1000.0;
 
 // Checks if the SocketIO event has JSON data.

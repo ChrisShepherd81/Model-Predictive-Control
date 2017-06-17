@@ -11,19 +11,15 @@ The state measurements supported by the simulator are:
 - The orientation of the car within the global map "psi" in rad.
 - The current speed "v" in mph.
 
-Furthermore a latency of 100 ms has been added to mimic real driving conditions where the car does actuate the commands instantly.
-
-## Limitations
-
-## Considerations
+Furthermore a latency of 100 ms has been added to mimic real driving conditions.
 
 ## Overview
 
 For MPC the way points and the vehicle position within the global coordinate system are transformed in the "MPC space".
 In "MPC space" the first way point given by the simulator represent the center of the coordinate system. All translated points are rotated by -psi. The resulted space is shown in the picture below.
 ![MPC](./img/mpc_space.png "MPC space diagram")
-The black circle represent the car positions within the space. The black arrow shows it's orientation which is always 0°.
-The blue line represent the connection within the given way points. The dashed blue line shows the 3rd order polynomial fit for the given way points. The distance between the two dotted horizontal lines is the cross track error. The angle of the brown tangent represents the psi error.
+The black circle represent the car positions within the space. The black arrow shows its orientation which is always 0°.
+The blue line represents the connection within the given way points. The dashed blue line shows the 3rd order polynomial fit for the given way points. The distance between the two dotted horizontal lines is the cross track error. The angle of the brown tangent represents the psi error.
 
 The so transformed and calculated values together with the current speed in m/s are passed as the state to the MPC solve method.
 ```
@@ -34,10 +30,51 @@ auto vars = mpc.Solve(state, coeffs);
 ```
 
 The calculated throttle and steering angle are used as the control values for the simulated car.
-The red line in the graph above represent the results as prediction path for the next N time stamps. 
-## Parameter search
+The red line in the graph above represents the results as prediction path for the next N time stamps. 
+
+To achieve a reasonable accurate prediction model the time per cycle is measured and the last elapsed time is used for the model parameter "dt". For a real time system with defined time slices a fixed value could be used.
+For tests only the lowest resolution of the simulator with lowest graphic details was used, resulting - togehter with the latency of 100 ms - in a cycle time of around 130 ms. Together with the number of predictions "N" set to 12 the prediction horizon results in ~1,5 seconds and stays (almost ever) behind the path sector given by the way points. For higher resolutions - depending on the test machine - the cycle time may increase and the prediction horizon shall be adapted by decreasing parameter "N".
+
+The cost is calculated as follows:
+
+```
+// The part of the cost based on the reference state.
+for (int t = 0; t < N; t++) {
+  cost = cte_eval_weigth*CppAD::pow(vars[cte_start + t], 2); //Cross track errors
+  cost += CppAD::pow(vars[epsi_start + t], 2); //error psi
+  cost += CppAD::pow(vars[v_start + t] - (ref_v*ref_v_correction), 2); // speed
+}
+
+// Minimize the use of actuators according to velocity.
+for (int t = 0; t < N - 1; t++) {
+  cost += delta_eval_weigth*CppAD::pow(vars[delta_start + t], 2)*CppAD::pow(vars[v_start + t], 3);
+  cost += CppAD::pow(vars[a_start + t], 2);
+}
+
+// Minimize the value gap between sequential actuations.
+for (int t = 0; t < N - 2; t++) {
+  cost += delta_diff_eval_weigth*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+  cost += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+}
+```
+For the cost calculation of CTE, delta values and difference of delta values weight parameters have been added.
+```
+// The reference velocity is set to 40 mph.
+double ref_v = 40*MPH_TO_MS;
+
+//The weights for cost evaluation
+CppAD::AD<double> cte_eval_weigth = 5.0;
+CppAD::AD<double> delta_eval_weigth = 0.02494*ref_v-0.200000; //Workaround. -> Best delta cost calc has not been found yet.
+CppAD::AD<double> delta_diff_eval_weigth = 1000.0;
+```
+With the weights shown in the snippet above, the car shows an acceptable driving behavior for reference speeds between 40 and 100 mph. The delta_eval_weigth has to be set to different values depending on the reference speed, this indicates that the best way to calculate the cost for delta values has not been found yet and would need some more analysis. 
 
 ## Results
+
+The driving behavior for 40 mph and 100 mph reference speed is shown in the two videos below.
+
+[![40 mph video](./img/Video.png)](./img/MPC_40mph.mp4)
+[![100 mph video](./img/Video.png)](./img/MPC_100mph.mp4)
 
 ## Dependencies
 
