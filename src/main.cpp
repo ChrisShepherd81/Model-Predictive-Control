@@ -22,9 +22,10 @@ constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 
 #define MPH_TO_MS 0.44704
-
+#define MS_TO_MPH 1/MPH_TO_MS
 #define WRITE_OUTPUT 0
 #define PRINT 0
+#define PRINT_SPEED 1
 
 //Number of predictions and dt used in FG_eval.hpp
 size_t N = 12;
@@ -34,10 +35,9 @@ double dt = 0.2;
 double ref_v = 40*MPH_TO_MS;
 
 //The weights for cost evaluation
-CppAD::AD<double> cte_eval_weigth = 1.0;
-CppAD::AD<double> epsi_eval_weigth = 1.0;
-CppAD::AD<double> delta_eval_weigth = 125.0;
-CppAD::AD<double> delta_diff_eval_weigth = 500.0;
+CppAD::AD<double> cte_eval_weigth = 5.0;
+CppAD::AD<double> delta_eval_weigth = 0.02494*ref_v-0.200000; //Workaround. -> Best delta cost has not been found yet.
+CppAD::AD<double> delta_diff_eval_weigth = 1000.0;
 
 // Checks if the SocketIO event has JSON data.
 string hasData(string s);
@@ -49,14 +49,13 @@ int main(int argc, char* argv[]) {
   MPC mpc;
 
   //Set values if parameters given via console parameters
-  if(argc >= 7)
+  if(argc >= 5)
   {
     cte_eval_weigth = std::stod(argv[1]);
-    epsi_eval_weigth = std::stod(argv[2]);
-    delta_eval_weigth = std::stod(argv[3]);
-    delta_diff_eval_weigth = std::stod(argv[4]);
-    ref_v = std::stod(argv[5])*MPH_TO_MS;
-    N = std::stoi(argv[6]);
+    delta_diff_eval_weigth = std::stod(argv[2]);
+    ref_v = std::stod(argv[3])*MPH_TO_MS;
+    delta_eval_weigth = 0.02494*ref_v-0.200000;
+    N = std::stoi(argv[4]);
   }
 
   //Initialized on connect
@@ -70,6 +69,12 @@ int main(int argc, char* argv[]) {
   ss << "test_" << std::put_time(&tm, "%d-%m-%Y_%H-%M-%S") << ".csv";
 
   FileWriter fileWriter(ss.str(), 3, 6, N);
+#endif
+
+#if PRINT_SPEED
+  double max_speed = 0;
+  double avg_speed = 0;
+  size_t counter = 0;
 #endif
 
   h.onMessage([&](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -90,7 +95,7 @@ int main(int argc, char* argv[]) {
 
           auto timeStamp = std::chrono::steady_clock::now();
           auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeStamp - last_timeStamp);
-          std::cout << "Cycle time: " << elapsed.count() << std::endl;
+
           last_timeStamp = timeStamp;
           dt = elapsed.count() / 1000.0;
 
@@ -151,8 +156,22 @@ int main(int argc, char* argv[]) {
           std::cout << "epsi = " << vars[5] << std::endl;
           std::cout << "delta = " << vars[6] << std::endl;
           std::cout << "a = " << vars[7] << std::endl;
+
+          std::cout << "Cycle time: " << elapsed.count() << std::endl;
 #endif
 
+#if PRINT_SPEED
+          //Calculate average speed
+          double speed_mph =  v*MS_TO_MPH;
+          counter++;
+          avg_speed = ((avg_speed * (counter-1)) + speed_mph)/counter;
+
+          //Remember maximum speed
+          if(speed_mph > max_speed)
+            max_speed = speed_mph;
+
+          std::cout << "Avg. speed: " << avg_speed << " Max speed: " << max_speed << std::endl;
+#endif
           json msgJson;
 
           //Set new actuations

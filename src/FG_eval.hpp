@@ -29,13 +29,13 @@ extern size_t N;
 extern double dt;
 
 extern AD<double> cte_eval_weigth;
-extern AD<double> epsi_eval_weigth;
 extern AD<double> delta_eval_weigth;
 extern AD<double> delta_diff_eval_weigth;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
 extern double ref_v;
+const double ref_v_correction = 1.173;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -119,14 +119,14 @@ class FG_eval
 
     // The part of the cost based on the reference state.
     for (int t = 0; t < N; t++) {
-      cost += cte_eval_weigth*CppAD::pow(vars[cte_start + t], 2); //Cross track errors
-      cost += epsi_eval_weigth*CppAD::pow(vars[epsi_start + t], 2); //error psi
-      cost += CppAD::pow(vars[v_start + t] - ref_v, 2); // speed
+      cost = cte_eval_weigth*CppAD::pow(vars[cte_start + t], 2); //Cross track errors
+      cost += CppAD::pow(vars[epsi_start + t], 2); //error psi
+      cost += CppAD::pow(vars[v_start + t] - (ref_v*ref_v_correction), 2); // speed
     }
 
     // Minimize the use of actuators according to velocity.
     for (int t = 0; t < N - 1; t++) {
-      cost += delta_eval_weigth*(CppAD::pow(vars[delta_start + t], 2)*CppAD::pow(vars[v_start + t], 2));
+      cost += delta_eval_weigth*CppAD::pow(vars[delta_start + t], 2)*CppAD::pow(vars[v_start + t], 3);
       cost += CppAD::pow(vars[a_start + t], 2);
     }
 
